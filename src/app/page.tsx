@@ -1,103 +1,262 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import TransactionForm from '@/components/TransactionForm';
+import TransactionList from '@/components/TransactionList';
+import Dashboard from '@/components/Dashboard';
+import BudgetForm from '@/components/BudgetForm';
+import BudgetList from '@/components/BudgetList';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Plus } from 'lucide-react';
+import { Toaster, toast } from 'sonner';
+import { Transaction } from '@/types/transaction';
+import { Budget, NewBudget } from '@/types/budget';
+
+type TransactionFormData = Omit<Transaction, '_id' | 'createdAt' | 'updatedAt'>;
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
+  const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false);
+  const [isAddBudgetOpen, setIsAddBudgetOpen] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const fetchTransactions = async () => {
+    try {
+      const response = await fetch('/api/transactions');
+      const data = await response.json();
+      setTransactions(data);
+    } catch (error) {
+      toast.error('Failed to fetch transactions');
+    }
+  };
+
+  const fetchBudgets = async () => {
+    try {
+      const response = await fetch('/api/budgets');
+      const data = await response.json();
+      setBudgets(data);
+    } catch (error) {
+      toast.error('Failed to fetch budgets');
+    }
+  };
+
+  useEffect(() => {
+    fetchTransactions();
+    fetchBudgets();
+  }, []);
+
+  const handleAddTransaction = async (data: TransactionFormData) => {
+    try {
+      const response = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) throw new Error('Failed to add transaction');
+      
+      await Promise.all([fetchTransactions(), fetchBudgets()]);
+      setIsAddTransactionOpen(false);
+      toast.success('Transaction added successfully');
+    } catch (error) {
+      toast.error('Failed to add transaction');
+    }
+  };
+
+  const handleEditTransaction = async (data: TransactionFormData) => {
+    if (!editingTransaction) return;
+    
+    try {
+      const response = await fetch(`/api/transactions/${editingTransaction._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) throw new Error('Failed to update transaction');
+      
+      await Promise.all([fetchTransactions(), fetchBudgets()]);
+      setEditingTransaction(null);
+      toast.success('Transaction updated successfully');
+    } catch (error) {
+      toast.error('Failed to update transaction');
+    }
+  };
+
+  const handleDeleteTransaction = async (transaction: Transaction) => {
+    try {
+      const response = await fetch(`/api/transactions/${transaction._id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) throw new Error('Failed to delete transaction');
+      
+      await Promise.all([fetchTransactions(), fetchBudgets()]);
+      toast.success('Transaction deleted successfully');
+    } catch (error) {
+      toast.error('Failed to delete transaction');
+    }
+  };
+
+  const handleAddBudget = async (data: NewBudget) => {
+    try {
+      const response = await fetch('/api/budgets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to add budget');
+      }
+      
+      await fetchBudgets();
+      setIsAddBudgetOpen(false);
+      toast.success('Budget added successfully');
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleEditBudget = async (data: NewBudget) => {
+    if (!editingBudget) return;
+    
+    try {
+      const response = await fetch(`/api/budgets/${editingBudget._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update budget');
+      }
+      
+      await fetchBudgets();
+      setEditingBudget(null);
+      toast.success('Budget updated successfully');
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleDeleteBudget = async (budget: Budget) => {
+    try {
+      const response = await fetch(`/api/budgets/${budget._id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) throw new Error('Failed to delete budget');
+      
+      await fetchBudgets();
+      toast.success('Budget deleted successfully');
+    } catch (error) {
+      toast.error('Failed to delete budget');
+    }
+  };
+
+  return (
+    <main className="container mx-auto py-8 px-4">
+      <Toaster position="top-right" />
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Personal Finance Tracker</h1>
+        <div className="space-x-4">
+          <Dialog open={isAddTransactionOpen} onOpenChange={setIsAddTransactionOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Transaction
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Transaction</DialogTitle>
+              </DialogHeader>
+              <TransactionForm onSubmit={handleAddTransaction} />
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isAddBudgetOpen} onOpenChange={setIsAddBudgetOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Plus className="mr-2 h-4 w-4" />
+                Set Budget
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Set New Budget</DialogTitle>
+              </DialogHeader>
+              <BudgetForm onSubmit={handleAddBudget} />
+            </DialogContent>
+          </Dialog>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+      </div>
+
+      <Dashboard transactions={transactions} />
+
+      <div className="mt-8 grid gap-8 md:grid-cols-2">
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Monthly Budgets</h2>
+          <BudgetList
+            budgets={budgets}
+            onEdit={setEditingBudget}
+            onDelete={handleDeleteBudget}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+        </div>
+
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Recent Transactions</h2>
+          <TransactionList
+            transactions={transactions}
+            onEdit={setEditingTransaction}
+            onDelete={handleDeleteTransaction}
           />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+        </div>
+      </div>
+
+      {editingTransaction && (
+        <Dialog open={!!editingTransaction} onOpenChange={() => setEditingTransaction(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Transaction</DialogTitle>
+            </DialogHeader>
+            <TransactionForm
+              initialData={editingTransaction}
+              onSubmit={handleEditTransaction}
+              onCancel={() => setEditingTransaction(null)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {editingBudget && (
+        <Dialog open={!!editingBudget} onOpenChange={() => setEditingBudget(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Budget</DialogTitle>
+            </DialogHeader>
+            <BudgetForm
+              initialData={editingBudget}
+              onSubmit={handleEditBudget}
+              onCancel={() => setEditingBudget(null)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+    </main>
   );
 }
