@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Transaction from '@/models/Transaction';
-import { Transaction as TransactionType } from '@/types/transaction';
 
 export async function GET() {
   try {
@@ -31,11 +30,10 @@ export async function POST(request: Request) {
     await connectDB();
     const transaction = await Transaction.create(body);
     return NextResponse.json(transaction, { status: 201 });
-  } catch (error: unknown) {
+  } catch (error) {
     console.error('Failed to create transaction:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return NextResponse.json(
-      { error: 'Failed to create transaction', details: errorMessage },
+      { error: 'Failed to create transaction' },
       { status: 500 }
     );
   }

@@ -2,10 +2,12 @@ import mongoose from 'mongoose';
 
 const MONGODB_URI = process.env.MONGODB_URI!;
 
-let cached: {
+interface CachedConnection {
   conn: typeof mongoose | null;
   promise: Promise<typeof mongoose> | null;
-} = {
+}
+
+const cached: CachedConnection = {
   conn: null,
   promise: null,
 };
