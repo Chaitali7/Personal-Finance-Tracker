@@ -49,9 +49,15 @@ export async function GET() {
   }
 }
 
+interface CreateBudgetBody {
+  category: string;
+  amount: number;
+  month: string;
+}
+
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body = await request.json() as CreateBudgetBody;
     await connectDB();
 
     // Check if budget already exists for this category and month
@@ -105,9 +111,9 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(budget, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Failed to create budget:', error);
-    const errorMessage = error.message || 'Unknown error occurred';
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return NextResponse.json(
       { error: 'Failed to create budget', details: errorMessage },
       { status: 500 }

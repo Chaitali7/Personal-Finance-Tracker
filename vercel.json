@@ -3,8 +3,5 @@
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
-  "framework": "nextjs",
-  "env": {
-    "MONGODB_URI": "@mongodb_uri"
-  }
+  "framework": "nextjs"
 } 

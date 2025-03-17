@@ -17,21 +17,23 @@ export async function GET() {
   }
 }
 
+interface CreateTransactionBody {
+  amount: number;
+  description: string;
+  date: string;
+  type: 'expense' | 'income';
+  category: string;
+}
+
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as Omit<TransactionType, '_id' | 'createdAt' | 'updatedAt'>;
-    console.log('Received transaction data:', body);
-    
+    const body = await request.json() as CreateTransactionBody;
     await connectDB();
-    console.log('Connected to database');
-    
     const transaction = await Transaction.create(body);
-    console.log('Created transaction:', transaction);
-    
     return NextResponse.json(transaction, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Failed to create transaction:', error);
-    const errorMessage = error.message || 'Unknown error occurred';
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return NextResponse.json(
       { error: 'Failed to create transaction', details: errorMessage },
       { status: 500 }

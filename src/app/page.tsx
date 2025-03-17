@@ -28,7 +28,7 @@ export default function Home() {
       const response = await fetch('/api/transactions');
       const data = await response.json();
       setTransactions(data);
-    } catch (error) {
+    } catch {
       toast.error('Failed to fetch transactions');
     }
   };
@@ -38,7 +38,7 @@ export default function Home() {
       const response = await fetch('/api/budgets');
       const data = await response.json();
       setBudgets(data);
-    } catch (error) {
+    } catch {
       toast.error('Failed to fetch budgets');
     }
   };
@@ -58,12 +58,15 @@ export default function Home() {
         body: JSON.stringify(data),
       });
       
-      if (!response.ok) throw new Error('Failed to add transaction');
+      if (!response.ok) {
+        throw new Error('Failed to add transaction');
+      }
       
-      await Promise.all([fetchTransactions(), fetchBudgets()]);
+      await fetchTransactions();
+      await fetchBudgets();
       setIsAddTransactionOpen(false);
       toast.success('Transaction added successfully');
-    } catch (error) {
+    } catch {
       toast.error('Failed to add transaction');
     }
   };
@@ -80,12 +83,15 @@ export default function Home() {
         body: JSON.stringify(data),
       });
       
-      if (!response.ok) throw new Error('Failed to update transaction');
+      if (!response.ok) {
+        throw new Error('Failed to update transaction');
+      }
       
-      await Promise.all([fetchTransactions(), fetchBudgets()]);
+      await fetchTransactions();
+      await fetchBudgets();
       setEditingTransaction(null);
       toast.success('Transaction updated successfully');
-    } catch (error) {
+    } catch {
       toast.error('Failed to update transaction');
     }
   };
@@ -96,11 +102,14 @@ export default function Home() {
         method: 'DELETE',
       });
       
-      if (!response.ok) throw new Error('Failed to delete transaction');
+      if (!response.ok) {
+        throw new Error('Failed to delete transaction');
+      }
       
-      await Promise.all([fetchTransactions(), fetchBudgets()]);
+      await fetchTransactions();
+      await fetchBudgets();
       toast.success('Transaction deleted successfully');
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete transaction');
     }
   };
@@ -116,15 +125,14 @@ export default function Home() {
       });
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to add budget');
+        throw new Error('Failed to add budget');
       }
       
       await fetchBudgets();
       setIsAddBudgetOpen(false);
       toast.success('Budget added successfully');
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch {
+      toast.error('Failed to add budget');
     }
   };
 
@@ -141,15 +149,14 @@ export default function Home() {
       });
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update budget');
+        throw new Error('Failed to update budget');
       }
       
       await fetchBudgets();
       setEditingBudget(null);
       toast.success('Budget updated successfully');
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch {
+      toast.error('Failed to update budget');
     }
   };
 
@@ -159,11 +166,13 @@ export default function Home() {
         method: 'DELETE',
       });
       
-      if (!response.ok) throw new Error('Failed to delete budget');
+      if (!response.ok) {
+        throw new Error('Failed to delete budget');
+      }
       
       await fetchBudgets();
       toast.success('Budget deleted successfully');
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete budget');
     }
   };

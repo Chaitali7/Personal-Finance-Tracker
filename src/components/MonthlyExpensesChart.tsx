@@ -1,4 +1,5 @@
-import { format } from 'date-fns';
+import React from 'react';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import {
   BarChart,
   Bar,
@@ -8,74 +9,53 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-
-interface Transaction {
-  _id: string;
-  amount: number;
-  date: string;
-  type: 'expense' | 'income';
-}
+import { Transaction } from '@/types/transaction';
 
 interface MonthlyExpensesChartProps {
   transactions: Transaction[];
 }
 
-export function MonthlyExpensesChart({ transactions = [] }: MonthlyExpensesChartProps) {
-  // Process transactions to get monthly totals
-  const monthlyData = (transactions || []).reduce((acc: any[], transaction) => {
-    const date = new Date(transaction.date);
-    const monthYear = format(date, 'MMM yyyy');
-    
-    const existingMonth = acc.find(item => item.month === monthYear);
-    
-    if (existingMonth) {
-      if (transaction.type === 'expense') {
-        existingMonth.expenses += Math.abs(transaction.amount);
-      } else {
-        existingMonth.income += transaction.amount;
+interface ChartData {
+  date: string;
+  amount: number;
+}
+
+export default function MonthlyExpensesChart({ transactions }: MonthlyExpensesChartProps) {
+  const currentDate = new Date();
+  const start = startOfMonth(currentDate);
+  const end = endOfMonth(currentDate);
+
+  // Create an array of all days in the current month
+  const daysInMonth = eachDayOfInterval({ start, end });
+
+  // Initialize data with 0 for each day
+  const initialData: ChartData[] = daysInMonth.map(date => ({
+    date: format(date, 'MMM d'),
+    amount: 0
+  }));
+
+  // Sum transactions by date
+  const data = transactions.reduce((acc, transaction) => {
+    if (transaction.type === 'expense') {
+      const transactionDate = new Date(transaction.date);
+      const dateStr = format(transactionDate, 'MMM d');
+      const dayData = acc.find(d => d.date === dateStr);
+      if (dayData) {
+        dayData.amount += transaction.amount;
       }
-    } else {
-      acc.push({
-        month: monthYear,
-        expenses: transaction.type === 'expense' ? Math.abs(transaction.amount) : 0,
-        income: transaction.type === 'income' ? transaction.amount : 0,
-      });
     }
-    
     return acc;
-  }, []);
-
-  // Sort data by date
-  monthlyData.sort((a, b) => {
-    return new Date(a.month).getTime() - new Date(b.month).getTime();
-  });
-
-  if (monthlyData.length === 0) {
-    return (
-      <div className="w-full h-[400px] mt-4 flex items-center justify-center text-muted-foreground">
-        No transaction data available
-      </div>
-    );
-  }
+  }, initialData);
 
   return (
-    <div className="w-full h-[400px] mt-4">
+    <div className="h-[300px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          data={monthlyData}
-          margin={{
-            top: 20,
-            right: 30,
-            left: 20,
-            bottom: 5,
-          }}
-        >
+        <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="month" />
+          <XAxis dataKey="date" />
           <YAxis />
           <Tooltip />
-          <Bar dataKey="expenses" fill="#ef4444" name="Expenses" />
-          <Bar dataKey="income" fill="#22c55e" name="Income" />
+          <Bar dataKey="amount" fill="#8884d8" />
         </BarChart>
       </ResponsiveContainer>
     </div>
