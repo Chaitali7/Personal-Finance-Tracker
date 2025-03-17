@@ -12,19 +12,15 @@ interface UpdateBudgetBody {
 
 export async function PUT(
   request: NextRequest,
-  context: { params?: { id?: string } }
-): Promise<NextResponse> {
+  { params }: { params: { id: string } }
+): Promise<Response> {
   try {
-    if (!context.params?.id) {
-      return NextResponse.json({ error: 'Missing budget ID' }, { status: 400 });
-    }
-
-    const body: UpdateBudgetBody = await request.json();
+    const body = await request.json() as UpdateBudgetBody;
     await connectDB();
 
     // Check if another budget exists for this category and month
     const existingBudget = await Budget.findOne({
-      _id: { $ne: context.params.id },
+      _id: { $ne: params.id },
       category: body.category,
       month: body.month,
     });
@@ -37,7 +33,7 @@ export async function PUT(
     }
 
     // Calculate spent amount for this category in the given month
-    const monthDate = parseISO(`${body.month}-01`);
+    const monthDate = parseISO(body.month + '-01');
     const start = startOfMonth(monthDate);
     const end = endOfMonth(monthDate);
 
@@ -46,7 +42,10 @@ export async function PUT(
         $match: {
           category: body.category,
           type: 'expense',
-          date: { $gte: start, $lte: end },
+          date: {
+            $gte: start,
+            $lte: end,
+          },
         },
       },
       {
@@ -58,41 +57,52 @@ export async function PUT(
     ]);
 
     const budget = await Budget.findByIdAndUpdate(
-      context.params.id,
-      { ...body, spent: spent[0]?.total || 0 },
+      params.id,
+      {
+        ...body,
+        spent: spent[0]?.total || 0,
+      },
       { new: true }
     );
 
     if (!budget) {
-      return NextResponse.json({ error: 'Budget not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Budget not found' },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json(budget);
   } catch (error) {
     console.error('Failed to update budget:', error);
-    return NextResponse.json({ error: 'Failed to update budget' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to update budget' },
+      { status: 500 }
+    );
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  context: { params?: { id?: string } }
-): Promise<NextResponse> {
+  { params }: { params: { id: string } }
+): Promise<Response> {
   try {
-    if (!context.params?.id) {
-      return NextResponse.json({ error: 'Missing budget ID' }, { status: 400 });
-    }
-
     await connectDB();
-    const budget = await Budget.findByIdAndDelete(context.params.id);
+    const budget = await Budget.findByIdAndDelete(params.id);
 
     if (!budget) {
-      return NextResponse.json({ error: 'Budget not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Budget not found' },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({ message: 'Budget deleted successfully' });
   } catch (error) {
     console.error('Failed to delete budget:', error);
-    return NextResponse.json({ error: 'Failed to delete budget' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to delete budget' },
+      { status: 500 }
+    );
   }
 }
