@@ -1,79 +1,58 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
-import { TransactionCategory } from '@/models/Transaction';
 
 interface Transaction {
   _id: string;
   amount: number;
+  description: string;
+  date: string;
   type: 'expense' | 'income';
-  category: TransactionCategory;
+  category: string;
 }
+
+interface ChartData {
+  name: string;
+  value: number;
+}
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
 interface CategoryPieChartProps {
   transactions: Transaction[];
-  type: 'expense' | 'income';
 }
 
-const COLORS = [
-  '#ef4444', // red
-  '#f97316', // orange
-  '#f59e0b', // amber
-  '#84cc16', // lime
-  '#22c55e', // green
-  '#06b6d4', // cyan
-  '#3b82f6', // blue
-  '#6366f1', // indigo
-  '#a855f7', // purple
-  '#ec4899', // pink
-];
-
-export function CategoryPieChart({ transactions, type }: CategoryPieChartProps) {
-  const categoryData = transactions
-    .filter(t => t.type === type)
-    .reduce((acc: { [key: string]: number }, transaction) => {
+export default function CategoryPieChart({ transactions }: CategoryPieChartProps) {
+  const expensesByCategory = transactions
+    .filter(t => t.type === 'expense')
+    .reduce((acc, transaction) => {
       const { category, amount } = transaction;
-      acc[category] = (acc[category] || 0) + Math.abs(amount);
+      acc[category] = (acc[category] || 0) + amount;
       return acc;
-    }, {});
+    }, {} as Record<string, number>);
 
-  const data = Object.entries(categoryData)
-    .map(([category, amount]) => ({
-      category,
-      amount,
-    }))
-    .sort((a, b) => b.amount - a.amount);
-
-  if (data.length === 0) {
-    return (
-      <div className="w-full h-[300px] flex items-center justify-center text-muted-foreground">
-        No {type} data available
-      </div>
-    );
-  }
+  const data: ChartData[] = Object.entries(expensesByCategory).map(([name, value]) => ({
+    name,
+    value,
+  }));
 
   return (
-    <div className="w-full h-[300px]">
+    <div className="h-[400px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
             data={data}
-            dataKey="amount"
-            nameKey="category"
             cx="50%"
             cy="50%"
-            outerRadius={80}
-            label={({ category, percent }) => 
-              `${category} (${(percent * 100).toFixed(0)}%)`
-            }
-            labelLine={true}
+            labelLine={false}
+            outerRadius={150}
+            fill="#8884d8"
+            dataKey="value"
+            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
           >
             {data.map((entry, index) => (
-              <Cell 
-                key={`cell-${index}`} 
-                fill={COLORS[index % COLORS.length]}
-              />
+              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
             ))}
           </Pie>
-          <Tooltip 
+          <Tooltip
             formatter={(value: number) => `$${value.toFixed(2)}`}
           />
           <Legend />

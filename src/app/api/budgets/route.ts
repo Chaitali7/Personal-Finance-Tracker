@@ -49,18 +49,15 @@ export async function GET() {
   }
 }
 
-interface CreateBudgetBody {
-  category: string;
-  amount: number;
-  month: string;
-}
-
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as CreateBudgetBody;
+    const body = await request.json() as {
+      category: string;
+      amount: number;
+      month: string;
+    };
     await connectDB();
 
-    // Check if budget already exists for this category and month
     const existingBudget = await Budget.findOne({
       category: body.category,
       month: body.month,
@@ -73,16 +70,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Calculate spent amount for this category in the given month
     const monthDate = parseISO(body.month + '-01');
     const start = startOfMonth(monthDate);
     const end = endOfMonth(monthDate);
-    
-    console.log('Calculating spent amount for:', {
-      category: body.category,
-      startDate: start.toISOString(),
-      endDate: end.toISOString()
-    });
 
     const spent = await Transaction.aggregate([
       {
@@ -103,19 +93,16 @@ export async function POST(request: Request) {
       },
     ]);
 
-    console.log('Aggregation result:', spent);
-
     const budget = await Budget.create({
       ...body,
       spent: spent[0]?.total || 0,
     });
 
     return NextResponse.json(budget, { status: 201 });
-  } catch (error: unknown) {
+  } catch (error) {
     console.error('Failed to create budget:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return NextResponse.json(
-      { error: 'Failed to create budget', details: errorMessage },
+      { error: 'Failed to create budget' },
       { status: 500 }
     );
   }

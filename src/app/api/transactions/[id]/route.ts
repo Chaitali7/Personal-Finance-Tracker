@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Transaction from '@/models/Transaction';
 
@@ -10,20 +10,17 @@ interface UpdateTransactionBody {
   category: string;
 }
 
-type Props = {
-  params: { id: string }
-}
-
 export async function PUT(
-  req: NextRequest,
-  { params }: Props
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const body = await req.json() as UpdateTransactionBody;
+    const { id } = await params;
+    const body = await request.json() as UpdateTransactionBody;
     await connectDB();
     
     const transaction = await Transaction.findByIdAndUpdate(
-      params.id,
+      id,
       body,
       { new: true }
     );
@@ -46,12 +43,13 @@ export async function PUT(
 }
 
 export async function DELETE(
-  req: NextRequest,
-  { params }: Props
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     await connectDB();
-    const transaction = await Transaction.findByIdAndDelete(params.id);
+    const transaction = await Transaction.findByIdAndDelete(id);
 
     if (!transaction) {
       return NextResponse.json(
