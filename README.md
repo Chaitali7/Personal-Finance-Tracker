@@ -57,17 +57,6 @@ This application is deployed on Vercel. For deployment:
 3. Add environment variables in Vercel dashboard
 4. Deploy!
 
-## Project Structure
-
-```
-src/
-├── app/                # Next.js app directory
-│   ├── api/           # API routes
-│   └── page.tsx       # Main page
-├── components/        # React components
-├── lib/              # Utility functions
-└── models/           # MongoDB models
-```
 
 ## Development
 
@@ -85,6 +74,4 @@ To add new features or modify existing ones:
 3. Make your changes
 4. Submit a pull request
 
-## License
 
-MIT
