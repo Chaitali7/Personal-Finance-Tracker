@@ -10,7 +10,6 @@ export async function GET() {
     return NextResponse.json(transactions || []);
   } catch (error) {
     console.error('Failed to fetch transactions:', error);
-    // Return an empty array instead of an error object
     return NextResponse.json([]);
   }
 }
@@ -60,23 +59,47 @@ export async function POST(request: Request) {
       );
     }
 
-    await connectDB();
-    const transaction = await Transaction.create({
-      ...body,
-      date: date,
-    });
-
-    return NextResponse.json(transaction, { status: 201 });
-  } catch (error) {
-    console.error('Failed to create transaction:', error);
-    if (error instanceof Error) {
+    // Connect to MongoDB with better error handling
+    try {
+      await connectDB();
+    } catch (error) {
+      console.error('MongoDB connection error:', error);
       return NextResponse.json(
-        { error: error.message },
+        { error: 'Database connection failed. Please try again later.' },
+        { status: 503 }
+      );
+    }
+
+    // Create transaction with better error handling
+    try {
+      const transaction = await Transaction.create({
+        ...body,
+        date: date,
+      });
+      return NextResponse.json(transaction, { status: 201 });
+    } catch (error) {
+      console.error('Transaction creation error:', error);
+      if (error instanceof Error) {
+        if (error.message.includes('ENOTFOUND')) {
+          return NextResponse.json(
+            { error: 'Database connection failed. Please check your connection string.' },
+            { status: 503 }
+          );
+        }
+        return NextResponse.json(
+          { error: error.message },
+          { status: 500 }
+        );
+      }
+      return NextResponse.json(
+        { error: 'Failed to create transaction' },
         { status: 500 }
       );
     }
+  } catch (error) {
+    console.error('Failed to process request:', error);
     return NextResponse.json(
-      { error: 'Failed to create transaction' },
+      { error: 'Failed to process request' },
       { status: 500 }
     );
   }

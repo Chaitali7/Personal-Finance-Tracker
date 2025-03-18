@@ -6,6 +6,11 @@ if (!process.env.MONGODB_URI) {
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
+// Validate MongoDB URI format
+if (!MONGODB_URI.startsWith('mongodb://') && !MONGODB_URI.startsWith('mongodb+srv://')) {
+  throw new Error('Invalid MongoDB URI format. Must start with mongodb:// or mongodb+srv://');
+}
+
 interface CachedConnection {
   conn: typeof mongoose | null;
   promise: Promise<typeof mongoose> | null;
@@ -26,9 +31,13 @@ export default async function connectDB() {
     const opts = {
       bufferCommands: true,
       maxPoolSize: 10,
+      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+      socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
     };
 
     console.log('Creating new MongoDB connection...');
+    console.log('MongoDB URI:', MONGODB_URI.replace(/\/\/[^:]+:[^@]+@/, '//****:****@')); // Log URI without credentials
+
     cached.promise = mongoose.connect(MONGODB_URI, opts)
       .then((mongoose) => {
         console.log('MongoDB connected successfully');
@@ -36,6 +45,7 @@ export default async function connectDB() {
       })
       .catch((error) => {
         console.error('MongoDB connection error:', error);
+        console.error('Connection string:', MONGODB_URI.replace(/\/\/[^:]+:[^@]+@/, '//****:****@'));
         cached.promise = null;
         throw error;
       });
