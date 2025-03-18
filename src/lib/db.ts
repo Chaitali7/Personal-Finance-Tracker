@@ -21,6 +21,39 @@ const cached: CachedConnection = {
   promise: null,
 };
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
+
+async function connectWithRetry(retries = MAX_RETRIES): Promise<typeof mongoose> {
+  try {
+    const opts = {
+      bufferCommands: true,
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 10000, // Increased timeout to 10s
+      socketTimeoutMS: 45000,
+      retryWrites: true,
+      retryReads: true,
+      connectTimeoutMS: 10000,
+      family: 4, // Force IPv4
+    };
+
+    console.log('Attempting MongoDB connection...');
+    console.log('MongoDB URI:', MONGODB_URI.replace(/\/\/[^:]+:[^@]+@/, '//****:****@'));
+
+    const connection = await mongoose.connect(MONGODB_URI, opts);
+    console.log('MongoDB connected successfully');
+    return connection;
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+    if (retries > 0) {
+      console.log(`Retrying connection... (${retries} attempts remaining)`);
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+      return connectWithRetry(retries - 1);
+    }
+    throw error;
+  }
+}
+
 export default async function connectDB() {
   if (cached.conn) {
     console.log('Using cached MongoDB connection');
@@ -28,24 +61,10 @@ export default async function connectDB() {
   }
 
   if (!cached.promise) {
-    const opts = {
-      bufferCommands: true,
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
-      socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
-    };
-
     console.log('Creating new MongoDB connection...');
-    console.log('MongoDB URI:', MONGODB_URI.replace(/\/\/[^:]+:[^@]+@/, '//****:****@')); // Log URI without credentials
-
-    cached.promise = mongoose.connect(MONGODB_URI, opts)
-      .then((mongoose) => {
-        console.log('MongoDB connected successfully');
-        return mongoose;
-      })
+    cached.promise = connectWithRetry()
       .catch((error) => {
-        console.error('MongoDB connection error:', error);
-        console.error('Connection string:', MONGODB_URI.replace(/\/\/[^:]+:[^@]+@/, '//****:****@'));
+        console.error('Failed to establish MongoDB connection after retries:', error);
         cached.promise = null;
         throw error;
       });
