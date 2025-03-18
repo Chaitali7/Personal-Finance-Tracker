@@ -17,50 +17,55 @@ export async function GET() {
     const currentMonth = format(new Date(), 'yyyy-MM');
     const budgets = await Budget.find({ month: currentMonth }).lean();
 
+    // If no budgets found, return empty array
+    if (!budgets || budgets.length === 0) {
+      return NextResponse.json([]);
+    }
+
     // Update spent amounts for all budgets
     const updatedBudgets = await Promise.all(budgets.map(async (budget) => {
-      const monthDate = parseISO(budget.month + '-01');
-      const start = startOfMonth(monthDate);
-      const end = endOfMonth(monthDate);
+      try {
+        const monthDate = parseISO(budget.month + '-01');
+        const start = startOfMonth(monthDate);
+        const end = endOfMonth(monthDate);
 
-      const spent = await Transaction.aggregate([
-        {
-          $match: {
-            category: budget.category,
-            type: 'expense',
-            date: {
-              $gte: start,
-              $lte: end,
+        const spent = await Transaction.aggregate([
+          {
+            $match: {
+              category: budget.category,
+              type: 'expense',
+              date: {
+                $gte: start,
+                $lte: end,
+              },
             },
           },
-        },
-        {
-          $group: {
-            _id: null,
-            total: { $sum: '$amount' },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$amount' },
+            },
           },
-        },
-      ]);
+        ]);
 
-      return {
-        ...budget,
-        spent: spent[0]?.total || 0,
-      };
+        return {
+          ...budget,
+          spent: spent[0]?.total || 0,
+        };
+      } catch (error) {
+        console.error('Error calculating spent amount:', error);
+        return {
+          ...budget,
+          spent: 0,
+        };
+      }
     }));
 
-    return NextResponse.json(updatedBudgets);
+    return NextResponse.json(updatedBudgets || []);
   } catch (error) {
     console.error('Failed to fetch budgets:', error);
-    if (error instanceof Error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
-    }
-    return NextResponse.json(
-      { error: 'Failed to fetch budgets' },
-      { status: 500 }
-    );
+    // Return an empty array instead of an error object
+    return NextResponse.json([]);
   }
 }
 

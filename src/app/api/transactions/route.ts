@@ -7,13 +7,11 @@ export async function GET() {
   try {
     await connectDB();
     const transactions = await Transaction.find().sort({ date: -1 }).lean();
-    return NextResponse.json(transactions);
+    return NextResponse.json(transactions || []);
   } catch (error) {
     console.error('Failed to fetch transactions:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch transactions' },
-      { status: 500 }
-    );
+    // Return an empty array instead of an error object
+    return NextResponse.json([]);
   }
 }
 
