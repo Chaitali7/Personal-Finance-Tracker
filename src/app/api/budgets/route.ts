@@ -3,15 +3,22 @@ import connectDB from '@/lib/db';
 import Budget from '@/models/Budget';
 import Transaction from '@/models/Transaction';
 import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
+import { TransactionCategory } from '@/types/transaction';
+
+interface CreateBudgetBody {
+  category: TransactionCategory;
+  amount: number;
+  month: string;
+}
 
 export async function GET() {
   try {
     await connectDB();
     const currentMonth = format(new Date(), 'yyyy-MM');
-    const budgets = await Budget.find({ month: currentMonth });
+    const budgets = await Budget.find({ month: currentMonth }).lean();
 
     // Update spent amounts for all budgets
-    for (const budget of budgets) {
+    const updatedBudgets = await Promise.all(budgets.map(async (budget) => {
       const monthDate = parseISO(budget.month + '-01');
       const start = startOfMonth(monthDate);
       const end = endOfMonth(monthDate);
@@ -35,13 +42,21 @@ export async function GET() {
         },
       ]);
 
-      budget.spent = spent[0]?.total || 0;
-      await budget.save();
-    }
+      return {
+        ...budget,
+        spent: spent[0]?.total || 0,
+      };
+    }));
 
-    return NextResponse.json(budgets);
+    return NextResponse.json(updatedBudgets);
   } catch (error) {
     console.error('Failed to fetch budgets:', error);
+    if (error instanceof Error) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       { error: 'Failed to fetch budgets' },
       { status: 500 }
@@ -51,11 +66,32 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as {
-      category: string;
-      amount: number;
-      month: string;
-    };
+    const body = await request.json() as CreateBudgetBody;
+    
+    // Validate required fields
+    if (!body.category || !body.amount || !body.month) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    // Validate amount
+    if (typeof body.amount !== 'number' || body.amount <= 0) {
+      return NextResponse.json(
+        { error: 'Amount must be a positive number' },
+        { status: 400 }
+      );
+    }
+
+    // Validate month format
+    if (!/^\d{4}-\d{2}$/.test(body.month)) {
+      return NextResponse.json(
+        { error: 'Month must be in YYYY-MM format' },
+        { status: 400 }
+      );
+    }
+
     await connectDB();
 
     const existingBudget = await Budget.findOne({
@@ -101,6 +137,12 @@ export async function POST(request: Request) {
     return NextResponse.json(budget, { status: 201 });
   } catch (error) {
     console.error('Failed to create budget:', error);
+    if (error instanceof Error) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       { error: 'Failed to create budget' },
       { status: 500 }
