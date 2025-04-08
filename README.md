@@ -1,4 +1,4 @@
-# Personal Finance Visualizer
+# Personal Finance Tracker
 
 A modern web application for tracking personal finances, built with Next.js, MongoDB, and TypeScript.
 
